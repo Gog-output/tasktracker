@@ -371,3 +371,14 @@ initDatabase().then(() => {
   console.error('Failed to initialize database:', err);
   process.exit(1);
 });
+
+// DEBUG ENDPOINT - Remove in production
+app.get('/api/debug/all', (req, res) => {
+  try {
+    const lists = getAll("SELECT * FROM lists ORDER BY position");
+    const cards = getAll("SELECT c.*, l.name as list_name FROM cards c JOIN lists l ON c.list_id = l.id ORDER BY c.list_id, c.position");
+    res.json({ lists, cards, count: { lists: lists.length, cards: cards.length } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
