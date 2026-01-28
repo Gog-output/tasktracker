@@ -357,6 +357,9 @@ io.on('connection', (socket) => {
 
 // Start server
 initDatabase().then(() => {
+  // Run migrations to ensure Goal lists exist
+  runMigrations();
+  
   server.listen(PORT, () => {
     console.log(`
 ╔════════════════════════════════════════════════════════════╗
@@ -467,3 +470,70 @@ function ensureGoalLists() {
 }
 
 // Call after initDatabase
+
+// Migration: Add Goal lists to any existing database
+function runMigrations() {
+  try {
+    console.log('🔄 Running migrations...');
+    
+    // Check and add each Goal list individually
+    const goalLists = [
+      { name: '🎯 Goal 1: Financial Research', cards: [
+        ['Daily Market Research', 'Pull NIFTY 50 summary, track US stocks', 'high'],
+        ['Screener.in Analysis', 'Research Indian companies, quarterly results', 'high'],
+        ['US Stock Tracking', 'Monitor 14 stocks in watchlist', 'medium'],
+        ['Portfolio Review', 'Weekly portfolio performance check', 'medium']
+      ]},
+      { name: '🚀 Goal 2: Shopping App', cards: [
+        ['Define App Scope', 'Outline core features for shopping assistant', 'high'],
+        ['Tech Stack Selection', 'Choose frontend/backend/DB', 'medium'],
+        ['MVP Planning', 'Define minimum viable product', 'medium']
+      ]},
+      { name: '📺 Goal 3: YouTube Channel', cards: [
+        ['ElevenLabs Setup', 'Configure AI voice for videos', 'high'],
+        ['Content Script Engine', 'Build AI script generator', 'high'],
+        ['First Video Script', 'Draft script for pilot video', 'medium'],
+        ['Video Production', 'Create first YouTube video', 'medium']
+      ]},
+      { name: '🛠️ Goal 4: Personal Tools', cards: [
+        ['TaskTracker Deployed', 'Kanban board for task management', 'low']
+      ]}
+    ];
+    
+    for (const goal of goalLists) {
+      // Check if list exists
+      const listExists = db.exec("SELECT id FROM lists WHERE name = ?", [goal.name]);
+      
+      let listId;
+      if (listExists.length === 0 || listExists[0].values.length === 0) {
+        // Add list
+        db.run('INSERT INTO lists (name, position) VALUES (?, ?)', [goal.name, goalLists.indexOf(goal) + 1]);
+        listId = db.exec("SELECT last_insert_rowid()")[0].values[0][0];
+        console.log(`✓ Added list: ${goal.name}`);
+      } else {
+        listId = listExists[0].values[0][0];
+        console.log(`✓ List exists: ${goal.name}`);
+      }
+      
+      // Check if cards exist for this list
+      const cardsExist = db.exec("SELECT COUNT(*) as count FROM cards WHERE list_id = ?", [listId]);
+      const cardCount = cardsExist[0].values[0][0];
+      
+      if (cardCount === 0) {
+        // Add cards
+        for (const [i, card] of goal.cards.entries()) {
+          db.run('INSERT INTO cards (list_id, title, description, priority, position) VALUES (?, ?, ?, ?, ?)',
+            [listId, card[0], card[1], card[2], i + 1]);
+        }
+        console.log(`✓ Added ${goal.cards.length} cards to ${goal.name}`);
+      } else {
+        console.log(`✓ Cards already exist for ${goal.name}`);
+      }
+    }
+    
+    saveDatabase();
+    console.log('✅ Migrations complete');
+  } catch (e) {
+    console.error('Migration error:', e.message);
+  }
+}
