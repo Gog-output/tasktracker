@@ -94,6 +94,9 @@ async function initDatabase() {
   }
   
   console.log('✓ Database initialized');
+  
+  // Add Goal lists
+  ensureGoalLists();
 }
 
 function saveDatabase() {
@@ -382,3 +385,81 @@ app.get('/api/debug/all', (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Add Goal lists if not exist
+function ensureGoalLists() {
+  try {
+    const goal1 = db.exec("SELECT * FROM lists WHERE name LIKE '%Goal 1%'");
+    if (goal1.length === 0 || goal1[0].values.length === 0) {
+      console.log('✓ Adding Goal lists...');
+      
+      const goalLists = [
+        { name: '🎯 Goal 1: Financial Research', position: 1 },
+        { name: '🚀 Goal 2: Shopping App', position: 2 },
+        { name: '📺 Goal 3: YouTube Channel', position: 3 },
+        { name: '🛠️ Goal 4: Personal Tools', position: 4 }
+      ];
+      
+      for (const list of goalLists) {
+        db.run('INSERT INTO lists (name, position) VALUES (?, ?)', [list.name, list.position]);
+      }
+      
+      // Get list IDs and add cards
+      const listResults = db.exec("SELECT id, name FROM lists WHERE name LIKE 'Goal%' ORDER BY position");
+      if (listResults.length > 0) {
+        const listData = listResults[0].values;
+        const listMap = {};
+        listData.forEach(([id, name]) => { listMap[name] = id; });
+        
+        // Goal 1 Cards
+        if (listMap['🎯 Goal 1: Financial Research']) {
+          const g1 = listMap['🎯 Goal 1: Financial Research'];
+          const g1Cards = [
+            ['Daily Market Research', 'Pull NIFTY 50 summary, track US stocks', 'high'],
+            ['Screener.in Analysis', 'Research Indian companies, quarterly results', 'high'],
+            ['US Stock Tracking', 'Monitor 14 stocks in watchlist', 'medium'],
+            ['Portfolio Review', 'Weekly portfolio performance check', 'medium']
+          ];
+          g1Cards.forEach((c, i) => db.run('INSERT INTO cards (list_id, title, description, priority, position) VALUES (?, ?, ?, ?, ?)', [g1, c[0], c[1], c[2], i + 1]));
+        }
+        
+        // Goal 2 Cards
+        if (listMap['🚀 Goal 2: Shopping App']) {
+          const g2 = listMap['🚀 Goal 2: Shopping App'];
+          const g2Cards = [
+            ['Define App Scope', 'Outline core features for shopping assistant', 'high'],
+            ['Tech Stack Selection', 'Choose frontend/backend/DB', 'medium'],
+            ['MVP Planning', 'Define minimum viable product', 'medium']
+          ];
+          g2Cards.forEach((c, i) => db.run('INSERT INTO cards (list_id, title, description, priority, position) VALUES (?, ?, ?, ?, ?)', [g2, c[0], c[1], c[2], i + 1]));
+        }
+        
+        // Goal 3 Cards
+        if (listMap['📺 Goal 3: YouTube Channel']) {
+          const g3 = listMap['📺 Goal 3: YouTube Channel'];
+          const g3Cards = [
+            ['ElevenLabs Setup', 'Configure AI voice for videos', 'high'],
+            ['Content Script Engine', 'Build AI script generator', 'high'],
+            ['First Video Script', 'Draft script for pilot video', 'medium'],
+            ['Video Production', 'Create first YouTube video', 'medium']
+          ];
+          g3Cards.forEach((c, i) => db.run('INSERT INTO cards (list_id, title, description, priority, position) VALUES (?, ?, ?, ?, ?)', [g3, c[0], c[1], c[2], i + 1]));
+        }
+        
+        // Goal 4 Cards
+        if (listMap['🛠️ Goal 4: Personal Tools']) {
+          const g4 = listMap['🛠️ Goal 4: Personal Tools'];
+          db.run('INSERT INTO cards (list_id, title, description, priority, position) VALUES (?, ?, ?, ?, ?)', 
+            [g4, 'TaskTracker Deployed', 'Kanban board for task management', 'low', 1]);
+        }
+        
+        saveDatabase();
+        console.log('✓ Goal lists and tasks added');
+      }
+    }
+  } catch (e) {
+    console.error('Error adding Goal lists:', e.message);
+  }
+}
+
+// Call after initDatabase
