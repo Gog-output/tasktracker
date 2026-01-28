@@ -1,0 +1,6 @@
+node_modules/
+tasktracker.db
+sessions.db
+*.log
+.env
+.DS_Store
