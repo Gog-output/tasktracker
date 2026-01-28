@@ -341,6 +341,23 @@ app.post('/api/cards/:id/comments', requireAuth, (req, res) => {
 });
 
 // Socket.io
+
+
+// Change password endpoint
+app.post('/api/change-password', requireAuth, (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  
+  const user = getOne("SELECT * FROM users WHERE username = ?", [req.session.user.username]);
+  if (!user || !bcrypt.compareSync(currentPassword, user.password)) {
+    return res.status(401).json({ error: 'Current password is incorrect' });
+  }
+  
+  const hashedPassword = bcrypt.hashSync(newPassword, 10);
+  runQuery("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, user.id]);
+  
+  res.json({ success: true, message: 'Password changed successfully' });
+});
+
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
   socket.on('disconnect', () => {
@@ -371,3 +388,4 @@ initDatabase().then(() => {
   console.error('Failed to initialize database:', err);
   process.exit(1);
 });
+
