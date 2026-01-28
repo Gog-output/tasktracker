@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🗂️ TaskTracker - Kanban Board</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --bg-primary: #f5f5f7;
+      --bg-card: #ffffff;
+      --bg-column: #ebecf0;
+      --text-primary: #172b4d;
+      --text-secondary: #5e6c84;
+      --accent: #0052cc;
+      --accent-hover: #0065ff;
+      --success: #36b37e;
+      --warning: #ffab00;
+      --danger: #ff5630;
+      --border: #dfe1e6;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+    
+    /* Login Screen */
+    #login-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    
+    .login-box {
+      background: white;
+      padding: 48px;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    
+    .login-box h1 {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+    
+    .login-box p {
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+    }
+    
+    .login-box input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 16px;
+      margin-bottom: 16px;
+      box-sizing: border-box;
+    }
+    
+    .login-box input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    
+    .login-box button {
+      width: 100%;
+      padding: 14px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .login-box button:hover {
+      background: var(--accent-hover);
+    }
+    
+    .login-box .error {
+      color: var(--danger);
+      font-size: 14px;
+      margin-top: 12px;
+    }
+    
+    /* Main App */
+    #app {
+      display: none;
+    }
+    
+    /* Header */
+    header {
+      background: white;
+      padding: 16px 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 24px;
+      font-weight: 700;
+    }
+    
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      background: var(--accent);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+    }
+    
+    .logout-btn {
+      padding: 8px 16px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    /* Board */
+    .board {
+      padding: 24px;
+      overflow-x: auto;
+      min-height: calc(100vh - 80px);
+    }
+    
+    .board-content {
+      display: flex;
+      gap: 16px;
+      min-height: 100%;
+    }
+    
+    /* Columns */
+    .column {
+      background: var(--bg-column);
+      border-radius: 12px;
+      min-width: 280px;
+      max-width: 280px;
+      display: flex;
+      flex-direction: column;
+      max-height: calc(100vh - 160px);
+    }
+    
+    .column-header {
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .column-title {
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .column-count {
+      background: rgba(0,0,0,0.1);
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    
+    .column-actions {
+      display: flex;
+      gap: 4px;
+    }
+    
+    .column-action-btn {
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      opacity: 0.6;
+    }
+    
+    .column-action-btn:hover {
+      opacity: 1;
+      background: rgba(0,0,0,0.1);
+    }
+    
+    .cards-container {
+      flex: 1;
+      padding: 0 8px 8px;
+      overflow-y: auto;
+      min-height: 50px;
+    }
+    
+    .cards-container.drag-over {
+      background: rgba(0, 82, 204, 0.1);
+    }
+    
+    /* Cards */
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 8px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      cursor: grab;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    
+    .card:hover {
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .card.dragging {
+      opacity: 0.5;
+      transform: rotate(3deg);
+    }
+    
+    .card-title {
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    
+    .card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    
+    .card-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    
+    .card-badge.high { background: #ffebe6; color: #bf2600; }
+    .card-badge.medium { background: #fff0b3; color: #ff991f; }
+    .card-badge.low { background: #e3fcef; color: #006644; }
+    
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+    
+    .card-assignee {
+      width: 24px;
+      height: 24px;
+      background: var(--accent);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    
+    .card-comments {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    
+    /* Add Card Button */
+    .add-card-btn {
+      width: 100%;
+      padding: 10px;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      text-align: left;
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+    
+    .add-card-btn:hover {
+      background: rgba(0,0,0,0.05);
+    }
+    
+    /* Add Column Button */
+    .add-column-btn {
+      min-width: 280px;
+      background: rgba(255,255,255,0.5);
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    
+    .add-column-btn:hover {
+      background: rgba(255,255,255,0.8);
+    }
+    
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+    }
+    
+    .modal-overlay.active {
+      display: flex;
+    }
+    
+    .modal {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    
+    .modal-title {
+      font-size: 20px;
+      font-weight: 600;
+    }
+    
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      font-size: 24px;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+    
+    .modal-close:hover {
+      background: var(--bg-primary);
+    }
+    
+    .form-group {
+      margin-bottom: 16px;
+    }
+    
+    .form-label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    
+    .form-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    
+    .form-select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      background: white;
+      cursor: pointer;
+    }
+    
+    .form-textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      min-height: 100px;
+      resize: vertical;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+    
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 24px;
+    }
+    
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+    
+    .btn-secondary {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+    }
+    
+    .btn-secondary:hover {
+      background: var(--border);
+    }
+    
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+    
+    /* Comments */
+    .comments-section {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    
+    .comment {
+      display: flex;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .comment:last-child {
+      border-bottom: none;
+    }
+    
+    .comment-content {
+      flex: 1;
+    }
+    
+    .comment-header {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    
+    .comment-author {
+      font-weight: 600;
+    }
+    
+    .comment-time {
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+    
+    .comment-text {
+      font-size: 14px;
+    }
+    
+    .add-comment {
+      display: flex;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    
+    .add-comment input {
+      flex: 1;
+      padding: 10px 12px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--text-primary);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.3s, transform 0.3s;
+      z-index: 300;
+    }
+    
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0,0,0,0.2);
+      border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="login-screen">
+  <div class="login-box">
+    <h1>🗂️ TaskTracker</h1>
+    <p>Your private Kanban board</p>
+    <form id="login-form">
+      <input type="text" id="username" placeholder="Username" required>
+      <input type="password" id="password" placeholder="Password" required>
+      <button type="submit">Sign In</button>
+    </form>
+    <p class="error" id="login-error"></p>
+  </div>
+</div>
+
+<!-- Main App -->
+<div id="app">
+  <header>
+    <div class="logo">
+      🗂️ TaskTracker
+    </div>
+    <div class="user-info">
+      <span id="user-display"></span>
+      <div class="user-avatar" id="user-avatar"></div>
+      <button class="logout-btn" id="logout-btn">Logout</button>
+    </div>
+  </header>
+  
+  <div class="board">
+    <div class="board-content" id="board-content">
+      <!-- Columns and cards will be rendered here -->
+    </div>
+  </div>
+</div>
+
+<!-- Card Modal -->
+<div class="modal-overlay" id="card-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modal-title">Card Title</h2>
+      <button class="modal-close" id="modal-close">×</button>
+    </div>
+    <div class="modal-body" id="modal-body">
+      <div class="form-group">
+        <label class="form-label">Title</label>
+        <input type="text" class="form-input" id="card-title">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-textarea" id="card-description" placeholder="Add a description..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Priority</label>
+        <select class="form-select" id="card-priority">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Assignee</label>
+        <input type="text" class="form-input" id="card-assignee" placeholder="Name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Due Date</label>
+        <input type="date" class="form-input" id="card-due-date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Move to List</label>
+        <select class="form-select" id="card-list"></select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="delete-card-btn">Delete</button>
+        <button class="btn btn-secondary" id="cancel-card-btn">Cancel</button>
+        <button class="btn btn-primary" id="save-card-btn">Save</button>
+      </div>
+      
+      <div class="comments-section">
+        <h3 style="margin-bottom: 12px;">Comments</h3>
+        <div id="comments-list"></div>
+        <div class="add-comment">
+          <input type="text" id="new-comment" placeholder="Add a comment...">
+          <button class="btn btn-primary" id="add-comment-btn">Post</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const API_URL = '/api';
+let socket = io();
+let currentUser = null;
+let lists = [];
+let cards = [];
+let currentCardId = null;
+let draggedCard = null;
+
+// Login
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  
+  try {
+    const res = await fetch(`${API_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    
+    const data = await res.json();
+    if (data.success) {
+      currentUser = data.user;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      document.getElementById('user-display').textContent = currentUser.username;
+      document.getElementById('user-avatar').textContent = currentUser.username[0].toUpperCase();
+      loadData();
+    } else {
+      document.getElementById('login-error').textContent = data.error || 'Login failed';
+    }
+  } catch (err) {
+    document.getElementById('login-error').textContent = 'Connection error';
+  }
+});
+
+document.getElementById('logout-btn').addEventListener('click', async () => {
+  await fetch(`${API_URL}/logout`, { method: 'POST' });
+  location.reload();
+});
+
+// Load data
+async function loadData() {
+  try {
+    const [listsRes, cardsRes] = await Promise.all([
+      fetch(`${API_URL}/lists`),
+      fetch(`${API_URL}/cards`)
+    ]);
+    lists = await listsRes.json();
+    cards = await cardsRes.json();
+    renderBoard();
+  } catch (err) {
+    showToast('Error loading data');
+  }
+}
+
+// Render board
+function renderBoard() {
+  const board = document.getElementById('board-content');
+  board.innerHTML = '';
+  
+  lists.forEach(list => {
+    const listCards = cards.filter(c => c.list_id === list.id);
+    
+    const column = document.createElement('div');
+    column.className = 'column';
+    column.innerHTML = `
+      <div class="column-header">
+        <span class="column-title">
+          ${list.name}
+          <span class="column-count">${listCards.length}</span>
+        </span>
+        <div class="column-actions">
+          <button class="column-action-btn" onclick="deleteList(${list.id})">🗑️</button>
+        </div>
+      </div>
+      <div class="cards-container" 
+           data-list-id="${list.id}"
+           ondragover="handleDragOver(event)"
+           ondrop="handleDrop(event)"
+           ondragleave="handleDragLeave(event)">
+        ${listCards.map(card => renderCard(card)).join('')}
+      </div>
+      <button class="add-card-btn" onclick="openAddCard(${list.id})">+ Add a card</button>
+    `;
+    board.appendChild(column);
+  });
+  
+  // Add column button
+  const addBtn = document.createElement('button');
+  addBtn.className = 'add-column-btn';
+  addBtn.textContent = '+ Add a list';
+  addBtn.onclick = addList;
+  board.appendChild(addBtn);
+}
+
+function renderCard(card) {
+  const priorityClass = card.priority || 'medium';
+  const assignee = card.assignee ? card.assignee[0].toUpperCase() : '';
+  
+  return `
+    <div class="card" 
+         draggable="true"
+         data-card-id="${card.id}"
+         ondragstart="handleDragStart(event)"
+         onclick="openCard(${card.id})">
+      <div class="card-title">${escapeHtml(card.title)}</div>
+      <div class="card-meta">
+        <span class="card-badge ${priorityClass}">${card.priority || 'medium'}</span>
+        ${card.due_date ? `<span>📅 ${formatDate(card.due_date)}</span>` : ''}
+      </div>
+      <div class="card-footer">
+        ${card.assignee ? `<div class="card-assignee">${assignee}</div>` : '<div></div>'}
+        ${card.comment_count > 0 ? `<span class="card-comments">💬 ${card.comment_count}</span>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+// Card drag & drop
+function handleDragStart(e) {
+  draggedCard = e.target;
+  e.target.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+}
+
+function handleDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+
+async function handleDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  
+  if (!draggedCard) return;
+  
+  const listId = parseInt(e.currentTarget.dataset.listId);
+  const cardId = parseInt(draggedCard.dataset.cardId);
+  
+  // Update card position
+  const listCards = cards.filter(c => c.list_id === listId);
+  const newPosition = listCards.length;
+  
+  try {
+    await fetch(`${API_URL}/cards/${cardId}/move`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ list_id: listId, position: newPosition })
+    });
+  } catch (err) {
+    showToast('Error moving card');
+  }
+  
+  draggedCard.classList.remove('dragging');
+  draggedCard = null;
+}
+
+// List management
+async function addList() {
+  const name = prompt('List name:');
+  if (!name) return;
+  
+  try {
+    const res = await fetch(`${API_URL}/lists`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    const list = await res.json();
+    lists.push(list);
+    renderBoard();
+  } catch (err) {
+    showToast('Error creating list');
+  }
+}
+
+async function deleteList(id) {
+  if (!confirm('Delete this list and all its cards?')) return;
+  
+  try {
+    await fetch(`${API_URL}/lists/${id}`, { method: 'DELETE' });
+    lists = lists.filter(l => l.id !== id);
+    cards = cards.filter(c => c.list_id !== id);
+    renderBoard();
+  } catch (err) {
+    showToast('Error deleting list');
+  }
+}
+
+// Card management
+function openAddCard(listId) {
+  currentCardId = null;
+  document.getElementById('modal-title').textContent = 'Add Card';
+  document.getElementById('card-title').value = '';
+  document.getElementById('card-description').value = '';
+  document.getElementById('card-priority').value = 'medium';
+  document.getElementById('card-assignee').value = '';
+  document.getElementById('card-due-date').value = '';
+  
+  // Populate list select
+  const listSelect = document.getElementById('card-list');
+  listSelect.innerHTML = lists.map(l => `<option value="${l.id}" ${l.id === listId ? 'selected' : ''}>${l.name}</option>`).join('');
+  
+  document.getElementById('delete-card-btn').style.display = 'none';
+  document.getElementById('save-card-btn').textContent = 'Add Card';
+  
+  document.getElementById('card-modal').classList.add('active');
+}
+
+async function openCard(cardId) {
+  currentCardId = cardId;
+  const card = cards.find(c => c.id === cardId);
+  if (!card) return;
+  
+  document.getElementById('modal-title').textContent = 'Edit Card';
+  document.getElementById('card-title').value = card.title;
+  document.getElementById('card-description').value = card.description || '';
+  document.getElementById('card-priority').value = card.priority || 'medium';
+  document.getElementById('card-assignee').value = card.assignee || '';
+  document.getElementById('card-due-date').value = card.due_date || '';
+  
+  // Populate list select
+  const listSelect = document.getElementById('card-list');
+  listSelect.innerHTML = lists.map(l => `<option value="${l.id}" ${l.id === card.list_id ? 'selected' : ''}>${l.name}</option>`).join('');
+  
+  document.getElementById('delete-card-btn').style.display = 'block';
+  document.getElementById('save-card-btn').textContent = 'Save';
+  
+  // Load comments
+  loadComments(cardId);
+  
+  document.getElementById('card-modal').classList.add('active');
+}
+
+async function saveCard() {
+  const title = document.getElementById('card-title').value.trim();
+  if (!title) return showToast('Title is required');
+  
+  const data = {
+    list_id: parseInt(document.getElementById('card-list').value),
+    title,
+    description: document.getElementById('card-description').value.trim(),
+    priority: document.getElementById('card-priority').value,
+    assignee: document.getElementById('card-assignee').value.trim() || null,
+    due_date: document.getElementById('card-due-date').value || null
+  };
+  
+  try {
+    if (currentCardId) {
+      // Update existing card
+      await fetch(`${API_URL}/cards/${currentCardId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+    } else {
+      // Create new card
+      await fetch(`${API_URL}/cards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+    }
+    closeModal();
+    loadData();
+  } catch (err) {
+    showToast('Error saving card');
+  }
+}
+
+async function deleteCard() {
+  if (!confirm('Delete this card?')) return;
+  
+  try {
+    await fetch(`${API_URL}/cards/${currentCardId}`, { method: 'DELETE' });
+    closeModal();
+    loadData();
+  } catch (err) {
+    showToast('Error deleting card');
+  }
+}
+
+function closeModal() {
+  document.getElementById('card-modal').classList.remove('active');
+  currentCardId = null;
+}
+
+document.getElementById('modal-close').addEventListener('click', closeModal);
+document.getElementById('cancel-card-btn').addEventListener('click', closeModal);
+document.getElementById('save-card-btn').addEventListener('click', saveCard);
+document.getElementById('delete-card-btn').addEventListener('click', deleteCard);
+
+// Comments
+async function loadComments(cardId) {
+  try {
+    const res = await fetch(`${API_URL}/cards/${cardId}/comments`);
+    const comments = await res.json();
+    
+    const list = document.getElementById('comments-list');
+    list.innerHTML = comments.map(c => `
+      <div class="comment">
+        <div class="user-avatar">${c.author[0].toUpperCase()}</div>
+        <div class="comment-content">
+          <div class="comment-header">
+            <span class="comment-author">${escapeHtml(c.author)}</span>
+            <span class="comment-time">${formatDateTime(c.created_at)}</span>
+          </div>
+          <div class="comment-text">${escapeHtml(c.content)}</div>
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    console.error('Error loading comments:', err);
+  }
+}
+
+async function addComment() {
+  const input = document.getElementById('new-comment');
+  const content = input.value.trim();
+  if (!content || !currentCardId) return;
+  
+  try {
+    await fetch(`${API_URL}/cards/${currentCardId}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content })
+    });
+    input.value = '';
+    loadComments(currentCardId);
+  } catch (err) {
+    showToast('Error adding comment');
+  }
+}
+
+document.getElementById('add-comment-btn').addEventListener('click', addComment);
+document.getElementById('new-comment').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') addComment();
+});
+
+// Socket.io listeners
+socket.on('list:created', (list) => {
+  lists.push(list);
+  renderBoard();
+});
+
+socket.on('list:updated', (list) => {
+  const idx = lists.findIndex(l => l.id === list.id);
+  if (idx !== -1) lists[idx] = list;
+  renderBoard();
+});
+
+socket.on('list:deleted', (id) => {
+  lists = lists.filter(l => l.id !== id);
+  cards = cards.filter(c => c.list_id !== id);
+  renderBoard();
+});
+
+socket.on('card:created', (card) => {
+  cards.push(card);
+  renderBoard();
+});
+
+socket.on('card:updated', (card) => {
+  const idx = cards.findIndex(c => c.id === card.id);
+  if (idx !== -1) cards[idx] = card;
+  renderBoard();
+});
+
+socket.on('card:deleted', (id) => {
+  cards = cards.filter(c => c.id !== id);
+  renderBoard();
+});
+
+socket.on('comment:created', (comment) => {
+  if (currentCardId === comment.card_id) {
+    loadComments(currentCardId);
+  }
+});
+
+// Utility functions
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatDateTime(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { 
+    month: 'short', day: 'numeric', 
+    hour: 'numeric', minute: '2-digit' 
+  });
+}
+
+function showToast(message) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// Make functions global for onclick handlers
+window.deleteList = deleteList;
+window.openAddCard = openAddCard;
+window.openCard = openCard;
+window.handleDragStart = handleDragStart;
+window.handleDragOver = handleDragOver;
+window.handleDragLeave = handleDragLeave;
+window.handleDrop = handleDrop;
+</script>
+</body>
+</html>
