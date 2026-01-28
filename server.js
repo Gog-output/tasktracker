@@ -173,13 +173,17 @@ const requireAuth = (req, res, next) => {
 };
 
 // Basic Auth middleware (for deployment protection)
+// ⚠️ WARNING: This can interfere with session auth. Disable or configure carefully.
 const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER;
 const BASIC_AUTH_PASS = process.env.BASIC_AUTH_PASS;
 
 if (BASIC_AUTH_USER && BASIC_AUTH_PASS) {
   app.use((req, res, next) => {
-    if (req.path.startsWith('/api') || req.path === '/') {
-      const authHeader = req.headers.authorization;
+    // Skip Basic Auth for login/logout endpoints (they use session auth)
+    if (req.path === '/api/login' || req.path === '/api/logout') {
+      return next();
+    }
+    const authHeader = req.headers.authorization;
       if (authHeader) {
         const base64 = authHeader.replace('Basic ', '');
         const decoded = Buffer.from(base64, 'base64').toString('utf8');
